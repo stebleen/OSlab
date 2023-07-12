@@ -266,6 +266,9 @@ fork(void)
   if((np = allocproc()) == 0){
     return -1;
   }
+  
+  // my add -- copy trace mask
+  np->trace_mask = p->trace_mask;
 
   // Copy user memory from parent to child.
   if(uvmcopy(p->pagetable, np->pagetable, p->sz) < 0){
@@ -692,4 +695,36 @@ procdump(void)
     printf("%d %s %s", p->pid, state, p->name);
     printf("\n");
   }
+}
+
+// my add 2
+//sysinfo
+int
+get_proc_num(void){
+
+  struct proc *p;
+  int num = 0;
+  for(p = proc; p < &proc[NPROC]; p++) {
+    acquire(&p->lock);
+    if(p->state == UNUSED) {
+      ++num;
+    }
+    release(&p->lock);
+  }
+  return num;
+}
+// my add 2
+uint64
+get_free_fd(void)
+{
+  uint64 num = 0;
+  int fd;
+  struct proc *p = myproc();
+
+  for(fd = 0; fd < NOFILE; fd++){
+    if(p->ofile[fd] == 0){
+      ++num;
+    }
+  }
+  return num;
 }

@@ -9,6 +9,15 @@ struct sleeplock;
 struct stat;
 struct superblock;
 
+// my add 2
+/*
+    增加三个函数的声明以便sysinfo调用
+*/
+//uint64          get_free_fd(void);
+uint64          get_free_mem(void);
+int             get_proc_num(void);
+
+
 // bio.c
 void            binit(void);
 struct buf*     bread(uint, uint);

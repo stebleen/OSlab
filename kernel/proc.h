@@ -103,4 +103,7 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
+  
+  // my add -- 由于系统调用只有22个，所以用4字节的int即可全部覆盖
+  int trace_mask;	       // mask for trace
 };

@@ -80,3 +80,26 @@ kalloc(void)
     memset((char*)r, 5, PGSIZE); // fill with junk
   return (void*)r;
 }
+
+// my add 2
+/*
+    观察kalloc.c可以得知空闲内存由链表 kmem.list 给出，每一个节点代表一页内存
+    每页内存大小由 宏定义PGSIZE 给出
+    注意锁的获取和释放
+*/
+uint64
+get_free_mem(void)
+{
+  struct run *r;
+  acquire(&kmem.lock);
+  r = kmem.freelist;
+  int num = 0;
+  while(r)
+  {
+    ++num;
+    r = r->next;
+  }
+  release(&kmem.lock);
+  return num * PGSIZE;
+
+}
