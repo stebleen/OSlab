@@ -440,3 +440,36 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
     return -1;
   }
 }
+
+
+// my add lab3-1
+// lab3-1
+void vmprinthelper(pagetable_t pagetable, int level) {
+    for (int i = 0; i < 512; ++i) {
+        pte_t pte = pagetable[i];
+        // 判断PTE是否有效
+        if (pte & PTE_V) {
+            switch(level)
+            {
+                case 3:
+                    printf(".. ");
+                case 2:
+                    printf(".. ");
+                case 1:
+                    printf("..%d: pte %p pa %p\n", i, pte, PTE2PA(pte));
+            }
+            pagetable_t child = (pagetable_t) PTE2PA(pte);
+            // 判断是否不为最低级页目录
+            if ((pte & (PTE_R | PTE_W | PTE_X)) == 0) {
+                vmprinthelper(child, level + 1);
+            }
+        }
+    }
+}
+
+// print page tables lab3-1
+void vmprint(pagetable_t pagetable) {
+    printf("page table %p\n", pagetable);
+    vmprinthelper(pagetable,1);
+}
+
