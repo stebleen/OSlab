@@ -180,6 +180,27 @@ int             copyin(pagetable_t, char *, uint64, uint64);
 int             copyinstr(pagetable_t, char *, uint64, uint64);
 void            vmprint(pagetable_t pagetable);	// my add lab3-1
 
+
+
+//add lab3-2
+void            each_kvmmap(pagetable_t, uint64, uint64, uint64, int);
+pagetable_t     each_kvminit();
+pte_t * walk(pagetable_t pagetable, uint64 va, int alloc);
+
+//add lab3-2-2
+pagetable_t ukvminit(void);
+void ukvmmap(pagetable_t kpagetable, uint64 va, uint64 pa, uint64 sz, int perm);
+pagetable_t ukvminit();
+
+// add lab3-3
+void u2kvmcopy(pagetable_t pagetable, pagetable_t kpagetable, uint64 oldsz, uint64 newsz);
+
+
+//add lab3-3
+//vmcopyin.c
+int copyin_new(pagetable_t pagetable, char *dst, uint64 srcva, uint64 len);
+int copyinstr_new(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max);
+
 // plic.c
 void            plicinit(void);
 void            plicinithart(void);

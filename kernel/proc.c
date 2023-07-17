@@ -31,6 +31,9 @@ procinit(void)
   for(p = proc; p < &proc[NPROC]; p++) {
       initlock(&p->lock, "proc");
 
+
+// delete lab3-2
+/*
       // Allocate a page for the process's kernel stack.
       // Map it high in memory, followed by an invalid
       // guard page.
@@ -40,8 +43,12 @@ procinit(void)
       uint64 va = KSTACK((int) (p - proc));
       kvmmap(va, (uint64)pa, PGSIZE, PTE_R | PTE_W);
       p->kstack = va;
+*/      
+      
   }
-  kvminithart();
+  
+  //delete lab3-2
+  //kvminithart();
 }
 
 // Must be called with interrupts disabled,
@@ -72,6 +79,60 @@ myproc(void) {
   pop_off();
   return p;
 }
+
+
+// add lab3-2-2
+void proc_freewalk(pagetable_t pagetable) {
+  for (int i = 0; i < 512; i++) {
+    pte_t pte = pagetable[i];
+	if (pte & PTE_V) {
+	  pagetable[i] = 0;
+	  if ((pte & (PTE_R | PTE_W | PTE_X)) == 0) {
+	    uint64 child = PTE2PA(pte);
+		proc_freewalk((pagetable_t)child);
+	  }
+	}
+  }
+  kfree((void*)pagetable);
+}
+
+
+
+// add lab3-2
+//模仿freewalk，但对叶子节点只做取消映射操作
+void 
+free_kernel_pagetable(pagetable_t pagetable)
+{
+  for(int i = 0; i < 512; ++i)
+  {
+    pte_t pte = pagetable[i];
+    if((pte & PTE_V) && (pte & (PTE_R|PTE_W|PTE_X)) == 0)//page direct
+    {
+      pagetable[i] = 0;
+      free_kernel_pagetable((pagetable_t)PTE2PA(pte));
+    } else if(pte & PTE_V){
+      pagetable[i] = 0;
+    }
+  }
+  kfree((void *)pagetable);
+}
+
+void 
+proc_free_kernel_pagetable(struct proc *p)
+{
+  //release the phycial memory first
+  if(p->kstack)
+  {
+    pte_t *pte = walk(p->kernel_pagetable, p->kstack, 0);
+    kfree((void *)PTE2PA(*pte));
+    p->kstack = 0;
+  }
+  free_kernel_pagetable(p->kernel_pagetable);
+}
+
+
+
+
 
 int
 allocpid() {
@@ -120,6 +181,49 @@ found:
     release(&p->lock);
     return 0;
   }
+  
+  /*
+  //add lab3-2
+  //creat a kernel page table and dispatch a kernel stack
+  p->kernel_pagetable = each_kvminit();
+  if (p->kernel_pagetable == 0)
+  {
+    freeproc(p);
+    release(&p->lock);
+    return 0;
+  }
+  char *pa = kalloc();
+  if(pa == 0) panic("allocpron:kalloc\n");
+  */
+/*
+    原来的分配根据第几个进程，在全局内核页表中分配，而现在拥有了单独的内核页表
+    这里根据图3.4和补充得知，内核栈只要在 MAXVA-2*PGSIZE-heap.size 就行
+    我假设堆大小为 2*PGSIZE
+*/
+/*
+  uint64 va = MAXVA - 4*PGSIZE;
+  mappages(p->kernel_pagetable, va, PGSIZE,(uint64)pa, PTE_R|PTE_W);
+  p->kstack = va;
+*/
+
+  // add lab3-2-2
+  // An empty user kernel page table.
+  p->kpagetable = ukvminit();
+  if(p->kpagetable == 0) {
+    freeproc(p);
+	release(&p->lock);
+	return 0;
+  }
+  // 初始化内核栈
+  char *pa = kalloc();
+  if(pa == 0)
+    panic("kalloc");
+  uint64 va = KSTACK((int)(p - proc));
+  ukvmmap(p->kpagetable, va, (uint64)pa, PGSIZE, PTE_R | PTE_W);
+  p->kstack = va;
+
+
+  
 
   // Set up new context to start executing at forkret,
   // which returns to user space.
@@ -141,6 +245,7 @@ freeproc(struct proc *p)
   p->trapframe = 0;
   if(p->pagetable)
     proc_freepagetable(p->pagetable, p->sz);
+    
   p->pagetable = 0;
   p->sz = 0;
   p->pid = 0;
@@ -150,6 +255,40 @@ freeproc(struct proc *p)
   p->killed = 0;
   p->xstate = 0;
   p->state = UNUSED;
+  
+  /*
+  // add lab3-2S
+  // 释放内核栈
+  if (p->kstack)
+  {
+    pte_t *pte = walk(p->kernel_pagetable, p->kstack, 0);
+    if (pte == 0)
+      panic("freeproc: walk");
+    kfree((void *)PTE2PA(*pte));
+  }
+  p->kstack = 0;
+  if(p->kernel_pagetable)
+    proc_free_kernel_pagetable(p);
+  p->kernel_pagetable = 0;
+  */
+  
+  
+  //add lab3-2-2
+  // delete kstack
+  if(p->kstack) {
+    pte_t* pte = walk(p->kpagetable, p->kstack, 0);
+	if(pte == 0)
+      panic("freeproc: walk");
+	kfree((void*)PTE2PA(*pte));
+  }
+  p->kstack = 0;
+    // delete kernel pagetable
+  if(p->kpagetable) {
+    proc_freewalk(p->kpagetable);
+  }
+  p->kpagetable = 0;
+
+  
 }
 
 // Create a user page table for a given process,
@@ -243,6 +382,11 @@ growproc(int n)
 
   sz = p->sz;
   if(n > 0){
+
+    // add lab3-3
+    if(PGROUNDUP(sz + n) >= PLIC) 
+      return -1;
+
     if((sz = uvmalloc(p->pagetable, sz, sz + n)) == 0) {
       return -1;
     }
@@ -288,6 +432,9 @@ fork(void)
     if(p->ofile[i])
       np->ofile[i] = filedup(p->ofile[i]);
   np->cwd = idup(p->cwd);
+
+  // add lab3-3
+  u2kvmcopy(np->pagetable, np->kpagetable, 0, np->sz);
 
   safestrcpy(np->name, p->name, sizeof(p->name));
 
@@ -473,7 +620,24 @@ scheduler(void)
         // before jumping back to us.
         p->state = RUNNING;
         c->proc = p;
+        
+        /*
+        //add lab3-2
+        //切换到进程内核页表
+        w_satp(MAKE_SATP(p->kernel_pagetable));
+        sfence_vma();
+        */
+        
+        //add lab3-2-2
+        // change satp
+        w_satp(MAKE_SATP(p->kpagetable));
+        sfence_vma();
+        
         swtch(&c->context, &p->context);
+        
+        //add lab3-2&3-2-2
+        //切换回全局内核页表
+        kvminithart();
 
         // Process is done running for now.
         // It should have changed its p->state before coming back.

@@ -103,4 +103,9 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
+  
+  // add lab3-2
+  pagetable_t kernel_pagetable;     // Kernel page table
+  // add lab3-2-2
+  pagetable_t kpagetable;
 };
