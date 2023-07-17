@@ -108,6 +108,7 @@ void            yield(void);
 int             either_copyout(int user_dst, uint64 dst, void *src, uint64 len);
 int             either_copyin(void *dst, int user_src, uint64 src, uint64 len);
 void            procdump(void);
+pagetable_t     ukvminit(void);
 
 // swtch.S
 void            swtch(struct context*, struct context*);
@@ -147,7 +148,7 @@ void            syscall();
 extern uint     ticks;
 void            trapinit(void);
 void            trapinithart(void);
-extern struct spinlock tickslock;
+extern struct   spinlock tickslock;
 void            usertrapret(void);
 
 // uart.c
@@ -178,25 +179,12 @@ uint64          walkaddr(pagetable_t, uint64);
 int             copyout(pagetable_t, uint64, char *, uint64);
 int             copyin(pagetable_t, char *, uint64, uint64);
 int             copyinstr(pagetable_t, char *, uint64, uint64);
-void            vmprint(pagetable_t pagetable);	// my add lab3-1
-
-
-
-//add lab3-2
-void            each_kvmmap(pagetable_t, uint64, uint64, uint64, int);
-pagetable_t     each_kvminit();
-pte_t * walk(pagetable_t pagetable, uint64 va, int alloc);
-
-//add lab3-2-2
-pagetable_t ukvminit(void);
-void ukvmmap(pagetable_t kpagetable, uint64 va, uint64 pa, uint64 sz, int perm);
-pagetable_t ukvminit();
-
-// add lab3-3
+void            vmprint(pagetable_t);
+void            ukvmmap(pagetable_t kpagetable, uint64 va, uint64 pa, uint64 sz, int perm);
+pagetable_t     ukvminit(void);
+pte_t *         walk(pagetable_t pagetable, uint64 va, int alloc);
 void u2kvmcopy(pagetable_t pagetable, pagetable_t kpagetable, uint64 oldsz, uint64 newsz);
 
-
-//add lab3-3
 //vmcopyin.c
 int copyin_new(pagetable_t pagetable, char *dst, uint64 srcva, uint64 len);
 int copyinstr_new(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max);
@@ -223,6 +211,8 @@ void            statsinc(void);
 
 // sprintf.c
 int             snprintf(char*, int, char*, ...);
+
+
 
 #ifdef LAB_NET
 // pci.c
