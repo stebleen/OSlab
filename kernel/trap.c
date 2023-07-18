@@ -67,6 +67,24 @@ usertrap(void)
     syscall();
   } else if((which_dev = devintr()) != 0){
     // ok
+
+    // add lab4-3
+    if(which_dev == 2) {
+      if(p->interval) {
+        if(p->ticks == p->interval) {
+          //p->ticks = 0;
+          //memmove(p->pretrapframe, p->trapframe, sizeof(struct trapframe));
+          *p->pretrapframe = *p->trapframe;
+          p->trapframe->epc = p->handler;
+        }// else {
+        p->ticks++;
+        //}
+      }
+      yield();
+    }
+
+
+
   } else {
     printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
     printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
@@ -216,5 +234,46 @@ devintr()
   } else {
     return 0;
   }
+}
+
+// add lab4-3
+// kernel/trap.c
+void copy_trapframe(struct trapframe* from, struct trapframe* to) {
+  to->kernel_satp = from->kernel_satp;
+  to->kernel_sp = from->kernel_sp;
+  to->kernel_trap = from->kernel_trap;
+  to->epc = from->epc;
+  to->kernel_hartid = from->kernel_hartid;
+  to->ra = from->ra;
+  to->sp = from->sp;
+  to->gp = from->gp;
+  to->tp = from->tp;
+  to->t0 = from->t0;
+  to->t1 = from->t1;
+  to->t2 = from->t2;
+  to->s0 = from->s0;
+  to->s1 = from->s1;
+  to->a0 = from->a0;
+  to->a1 = from->a1;
+  to->a2 = from->a2;
+  to->a3 = from->a3;
+  to->a4 = from->a4;
+  to->a5 = from->a5;
+  to->a6 = from->a6;
+  to->a7 = from->a7;
+  to->s2 = from->s2;
+  to->s3 = from->s3;
+  to->s4 = from->s4;
+  to->s5 = from->s5;
+  to->s6 = from->s6;
+  to->s7 = from->s7;
+  to->s8 = from->s8;
+  to->s9 = from->s9;
+  to->s10 = from->s10;
+  to->s11 = from->s11;
+  to->t3 = from->t3;
+  to->t4 = from->t4;
+  to->t5 = from->t5;
+  to->t6 = from->t6;
 }
 
