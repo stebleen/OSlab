@@ -6,6 +6,8 @@
 #include "proc.h"
 #include "defs.h"
 
+extern int refNum[];  // add
+
 struct spinlock tickslock;
 uint ticks;
 
@@ -65,6 +67,92 @@ usertrap(void)
     intr_on();
 
     syscall();
+  /*
+  // add
+  } else if(r_scause() == 13 || r_scause() == 15){
+    pte_t *pte;
+    uint64 addr = r_stval();
+    addr = PGROUNDDOWN(addr);
+    if((pte = walk(p->pagetable, addr, 0)) == 0 || !(*pte & PTE_COW)){
+      p->killed = 1;
+    } else{
+      char *mem;
+      uint64 pa = PTE2PA(*pte);
+      uint flags;
+      if(refNum[(pa - KERNBASE)/PGSIZE] == 2){
+        *pte = *pte | PTE_W;
+        *pte = *pte & ~ PTE_COW;
+      }else{
+        if((mem = kalloc()) == 0){
+          p->killed = 1;
+        }else{
+          refNum[(pa - KERNBASE)/PGSIZE] -= 1;
+          memmove(mem, (char*)pa, PGSIZE);
+          *pte = *pte | PTE_W;
+          *pte = *pte & ~PTE_COW;
+          flags = PTE_FLAGS(*pte);
+          *pte = PA2PTE((uint64)mem) | flags;
+          refNum[((uint64)mem - KERNBASE)/PGSIZE] += 1;
+        }
+      }
+    }
+    */
+
+  // add-1
+  } else if(r_scause() == 15) { // 写页面错
+    uint64 va = PGROUNDDOWN(r_stval());
+    pte_t *pte;
+    if(va >= MAXVA) { // 虚拟地址错
+      printf("va is larger than MAXVA!\n");
+      p->killed = 1;
+      goto end;
+    }
+    if(va > p->sz){ // 虚拟地址超出进程的地址空间
+      printf("va is larger than sz!\n");
+      p->killed = 1;
+      goto end;
+    }
+    if((pte = walk(p->pagetable, va, 0)) == 0) {
+      printf("usertrap(): page not found\n");
+      p->killed=1;
+      goto end;
+    } 
+    // 分配一个新页面
+    if(((*pte) & PTE_COW) == 0 ||((*pte) & PTE_V) == 0 || ((*pte) & PTE_U) == 0) {
+      printf("usertrap: pte not exist or it's not cow page\n");
+      p->killed = 1;
+      goto end;
+    }
+    uint64 pa = PTE2PA(*pte);
+    acquire_refcnt();
+    uint ref = kgetref((void*)pa);
+    if(ref == 1) { // 引用次数为1，直接使用该页
+      *pte = ((*pte) & (~PTE_COW)) | PTE_W;
+    } else { // 引用次数大于1，分配物理页
+      char* mem = kalloc();
+      if(mem == 0) {
+        printf("usertrap(): memery alloc fault\n");
+        p->killed = 1;
+        release_refcnt();
+        goto end;
+      }
+      // 将旧页面复制到新页面，并用PTE_W和(~PTE_COW)设置新页的PTE
+      memmove(mem, (char*)pa, PGSIZE);
+      uint flag = (PTE_FLAGS(*pte) | PTE_W) & (~PTE_COW);
+      if(mappages(p->pagetable, va, PGSIZE, (uint64)mem, flag) != 0) {
+        kfree(mem);
+        printf("usertrap(): can not map page\n");
+        p->killed = 1;
+        release_refcnt();
+        goto end;
+      }
+      kfree((void*)pa); //旧页引用次数减1
+    }
+    release_refcnt();
+
+
+
+
   } else if((which_dev = devintr()) != 0){
     // ok
   } else {
@@ -72,6 +160,9 @@ usertrap(void)
     printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
     p->killed = 1;
   }
+  end:
+    if(p->killed)
+      exit(-1);
 
   if(p->killed)
     exit(-1);
