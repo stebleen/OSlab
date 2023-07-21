@@ -17,6 +17,11 @@ struct entry *table[NBUCKET];
 int keys[NKEYS];
 int nthread = 1;
 
+// add lab7-2:safe
+//pthread_mutex_t lock;
+// add lab7-2:fast
+pthread_mutex_t lock[NBUCKET];
+
 double
 now()
 {
@@ -40,6 +45,9 @@ void put(int key, int value)
 {
   int i = key % NBUCKET;
 
+  // add lab7-2:fast
+  pthread_mutex_lock(&lock[i]); // acquire lock
+
   // is the key already present?
   struct entry *e = 0;
   for (e = table[i]; e != 0; e = e->next) {
@@ -53,6 +61,10 @@ void put(int key, int value)
     // the new is new.
     insert(key, value, &table[i], table[i]);
   }
+
+  // add lab7-2:fast
+  pthread_mutex_unlock(&lock[i]);
+
 }
 
 static struct entry*
@@ -76,7 +88,15 @@ put_thread(void *xa)
   int b = NKEYS/nthread;
 
   for (int i = 0; i < b; i++) {
+
+    // add lab7-2:safe
+    //pthread_mutex_lock(&lock);
+
     put(keys[b*n + i], n);
+
+    // add lab7-2:safe
+    //pthread_mutex_unlock(&lock);
+
   }
 
   return NULL;
@@ -113,6 +133,13 @@ main(int argc, char *argv[])
   assert(NKEYS % nthread == 0);
   for (int i = 0; i < NKEYS; i++) {
     keys[i] = random();
+  }
+
+  // add lab7-2:safe
+  //pthread_mutex_init(&lock, NULL);
+  // add lab7-2:fast
+  for(int i=0;i<NBUCKET;i++){
+    pthread_mutex_init(&lock[i],NULL);
   }
 
   //
