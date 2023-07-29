@@ -103,3 +103,15 @@ get_free_mem(void)
   return num * PGSIZE;
 
 }
+
+// add 2-1
+// get the number of bytes of free memory - lab2-2
+uint64 getfreemem(void) {
+    uint64 n;
+    struct run *r;
+    // 遍历kmem.freelist链表
+    for (n = 0, r = kmem.freelist; r; r = r->next) {
+        ++n;
+    }
+    return n * PGSIZE;
+}

@@ -106,4 +106,7 @@ struct proc {
   
   // my add -- 由于系统调用只有22个，所以用4字节的int即可全部覆盖
   int trace_mask;	       // mask for trace
+
+  // add 1-1
+  int mask; // trace mask
 };

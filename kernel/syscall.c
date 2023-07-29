@@ -105,7 +105,7 @@ extern uint64 sys_wait(void);
 extern uint64 sys_write(void);
 extern uint64 sys_uptime(void);
 extern uint64 sys_trace(void);	// my add
-extern uint64 sys_info(void);	// my add 2
+extern uint64 sys_sysinfo(void);	// my add 2
 
 static uint64 (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -130,12 +130,43 @@ static uint64 (*syscalls[])(void) = {
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
 [SYS_trace]   sys_trace,	// my add
-[SYS_sysinfo] sys_info,		// my add 2
+[SYS_sysinfo] sys_sysinfo,		// my add 2
 };
 
+/*
 // my add
 //创建一个字符串数组来储存系统调用名
 static char syscall_name[23][16] = {"fork", "exit", "wait", "pipe", "read", "kill", "exec", "fstat", "chdir", "dup", "getpid", "sbrk", "sleep", "uptime", "open", "write", "mknod", "unlink", "link", "mkdir", "close", "trace", "sysinfo"};   
+*/
+
+// add 1-1
+static char *syscalls_name[] = {
+        "",
+        "fork",
+        "exit",
+        "wait",
+        "pipe",
+        "read",
+        "kill",
+        "exec",
+        "fstat",
+        "chdir",
+        "dup",
+        "getpid",
+        "sbrk",
+        "sleep",
+        "uptime",
+        "open",
+        "write",
+        "mknod",
+        "unlink",
+        "link",
+        "mkdir",
+        "close",
+        "trace",
+        "sysinfo"
+};
+
 
 void
 syscall(void)
@@ -146,19 +177,30 @@ syscall(void)
   // 系统调用号存储在a7
   num = p->trapframe->a7;
   
+  /*
   // my add -- 第一个参数存储在a0
   int first_arg = p->trapframe->a0;
+  */
   
   
   if(num > 0 && num < NELEM(syscalls) && syscalls[num]) {
     // 返回值存储在a0
     p->trapframe->a0 = syscalls[num]();
     
+    /*
     // my add -- 位操作判断mask是否覆盖了当前调用号
     if(p->trace_mask > 0 && (p->trace_mask&(1<<num)))
     {
       printf("%d: sys_%s(%d) -> %d\n", p->pid, syscall_name[num-1], first_arg, p->trapframe->a0);
     }
+    */
+
+    // add 1-1
+    if ((1 << num) & p->mask) {    // 判断掩码是否匹配
+          printf("%d: syscall %s -> %d\n", p->pid, syscalls_name[num],
+                 p->trapframe->a0);
+    }
+
     
     
     
