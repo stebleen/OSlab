@@ -77,8 +77,8 @@ exec(char *path, char **argv)
   sp = sz;
   stackbase = sp - PGSIZE;
   u2kvmcopy(pagetable, p->kpagetable, 0, sz);
-  if(p->pid == 1)
-    vmprint(p->pagetable);
+  // if(p->pid == 1)
+  //   vmprint(p->pagetable);
 
   // Push argument strings, prepare rest of stack in ustack.
   for(argc = 0; argv[argc]; argc++) {
